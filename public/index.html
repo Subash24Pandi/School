@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>School Student Q&A</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      padding: 30px;
+    }
+    .box {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 14px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    h1 {
+      color: #123;
+    }
+    input {
+      width: 75%;
+      padding: 14px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      padding: 14px 22px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #0b7a4b;
+      color: white;
+      cursor: pointer;
+    }
+    .answer {
+      margin-top: 25px;
+      padding: 18px;
+      background: #eefaf3;
+      border-left: 5px solid #0b7a4b;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+    .card {
+      margin-top: 15px;
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+    }
+    .label {
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>🎓 School Student Q&A</h1>
+
+    <p>Ask anything like:</p>
+    <p><b>What is the email id of CherkaNihal?</b></p>
+    <p><b>What is Aishwarya roll number?</b></p>
+    <p><b>Show Abhishek details</b></p>
+
+    <input id="question" placeholder="Ask your question here..." />
+    <button onclick="askQuestion()">Ask</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function askQuestion() {
+      const question = document.getElementById("question").value;
+      const resultDiv = document.getElementById("result");
+
+      resultDiv.innerHTML = "Searching...";
+
+      const response = await fetch("/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ question })
+      });
+
+      const data = await response.json();
+
+      let html = `<div class="answer">${typeof data.answer === "string" ? data.answer : "Full details below"}</div>`;
+
+      if (data.results && data.results.length > 0) {
+        data.results.forEach(item => {
+          const s = item.student;
+          html += `
+            <div class="card">
+              <p><span class="label">Name:</span> ${s.firstName} ${s.lastName}</p>
+              <p><span class="label">School:</span> ${s.schoolName}</p>
+              <p><span class="label">Std:</span> ${s.std}</p>
+              <p><span class="label">Sec:</span> ${s.sec}</p>
+              <p><span class="label">Roll No:</span> ${s.rollNoSpoken}</p>
+              <p><span class="label">Gender:</span> ${s.gender}</p>
+              <p><span class="label">Email Id:</span> ${s.emailId}</p>
+              <p><span class="label">Login Id:</span> ${s.loginId}</p>
+            </div>
+          `;
+        });
+      }
+
+      resultDiv.innerHTML = html;
+    }
+  </script>
+</body>
+</html>
