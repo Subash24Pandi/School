@@ -5,13 +5,17 @@ const express = require("express");
 const { MongoClient } = require("mongodb");
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(express.static("public"));
 
-const uri =
-  "mongodb+srv://TheAitel:theaitel2025@cluster0.vl95v.mongodb.net/school_students_db?retryWrites=true&w=majority&appName=Cluster0";
+const uri = process.env.MONGODB_URI;
+
+if (!uri) {
+  console.error("❌ MONGODB_URI is missing. Add it in Render Environment Variables.");
+  process.exit(1);
+}
 
 const client = new MongoClient(uri);
 
@@ -82,6 +86,16 @@ async function start() {
       res.sendFile(__dirname + "/public/index.html");
     });
 
+    app.get("/health", (req, res) => {
+      res.json({ status: "ok", message: "School API running" });
+    });
+
+    app.get("/students", async (req, res) => {
+      const limit = Number(req.query.limit) || 100;
+      const data = await studentsCollection.find().limit(limit).toArray();
+      res.json({ count: data.length, data });
+    });
+
     app.post("/ask", async (req, res) => {
       try {
         const question = req.body.question || "";
@@ -92,13 +106,11 @@ async function start() {
 
         let matches = [];
 
-        // 1. Email exact search
         matches = students.filter((s) => {
           const email = norm(s.emailId);
           return email && qNorm.includes(email);
         });
 
-        // 2. Login exact search
         if (matches.length === 0) {
           matches = students.filter((s) => {
             const login = norm(s.loginId);
@@ -106,7 +118,6 @@ async function start() {
           });
         }
 
-        // 3. Roll number exact search
         if (matches.length === 0) {
           matches = students.filter((s) => {
             const roll = norm(s.rollNoSpoken);
@@ -114,7 +125,6 @@ async function start() {
           });
         }
 
-        // 4. Full name exact search
         if (matches.length === 0) {
           matches = students.filter((s) => {
             const fullName1 = norm(`${s.firstName || ""}${s.lastName || ""}`);
@@ -127,13 +137,17 @@ async function start() {
           });
         }
 
-        // 5. First name exact fallback
         if (matches.length === 0) {
           matches = students.filter((s) => {
             const first = norm(s.firstName);
             return first.length >= 5 && qNorm.includes(first);
           });
         }
+
+        matches = matches.filter((s) => {
+          const name = studentName(s);
+          return name && name.length >= 3 && name !== "S";
+        });
 
         if (matches.length === 0) {
           return res.json({
@@ -142,12 +156,6 @@ async function start() {
             results: []
           });
         }
-
-        // Remove bad records like S .
-        matches = matches.filter((s) => {
-          const name = studentName(s);
-          return name && name.length >= 3 && name !== "S";
-        });
 
         const results = matches.map((s) => ({
           answer: buildAnswer(s, field),
